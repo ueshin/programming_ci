@@ -15,6 +15,9 @@
  */
 package st.happy_camper.programming_ci.recommendation
 
+import scala.math.pow
+import scala.math.sqrt
+
 /**
  * @author ueshin
  */
@@ -43,5 +46,27 @@ object Recommendations {
     "Jack Matthews" -> Map("Lady in the Water" -> 3.0, "Snakes on a Plane" -> 4.0,
       "The Night Listener" -> 3.0, "Superman Returns" -> 5.0, "You, Me and Dupree" -> 3.5),
     "Toby" -> Map("Snakes on a Plane" -> 4.5, "You, Me and Dupree" -> 1.0, "Superman Returns" -> 4.0))
+
+  /*
+   * 2.3.1 ユークリッド距離によるスコア
+   */
+  /**
+   * @param ratings
+   * @param a1
+   * @param a2
+   * @return
+   */
+  def simDistance[A, B](ratings: Ratings[A, B], a1: A, a2: A) = {
+    val si = ratings(a1).keys.collect {
+      case it if ratings(a2).contains(it) => it
+    }.toList
+    if (si.size > 0) {
+      1.0 / (1.0 + sqrt((si.map { it =>
+        pow(ratings(a1)(it) - ratings(a2)(it), 2.0)
+      }).sum))
+    } else {
+      0.0
+    }
+  }
 
 }
