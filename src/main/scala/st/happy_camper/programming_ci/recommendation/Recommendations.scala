@@ -246,4 +246,42 @@ object Recommendations {
     }
   }
 
+  /*
+   * 2.10.1 Tanimoto係数
+   */
+  /**
+   * @param ratings
+   * @param a1
+   * @param a2
+   * @return
+   */
+  def simTanimotoR[A, B](ratings: Ratings[A, B], a1: A, a2: A) = {
+    val si = (ratings(a1).keySet ++ ratings(a2).keySet).toList
+    if (si.size > 0) {
+      val sum1Sq = (si.map { it => pow(ratings(a1).getOrElse(it, 0.0), 2.0) }).sum
+      val sum2Sq = (si.map { it => pow(ratings(a2).getOrElse(it, 0.0), 2.0) }).sum
+
+      val ip = (si.map { it => ratings(a1).getOrElse(it, 0.0) * ratings(a2).getOrElse(it, 0.0) }).sum
+
+      ip / (sum1Sq + sum2Sq - ip)
+    } else {
+      0.0
+    }
+  }
+
+  /**
+   * @param ratings
+   * @param a1
+   * @param a2
+   * @return
+   */
+  def simTanimotoB[A, B](ratings: Ratings[A, B], a1: A, a2: A) = {
+    val sisize = (ratings(a1).keySet & ratings(a2).keySet).size
+    if (sisize > 0) {
+      sisize.asInstanceOf[Double] / (ratings(a1).size + ratings(a2).size - sisize)
+    } else {
+      0.0
+    }
+  }
+
 }
