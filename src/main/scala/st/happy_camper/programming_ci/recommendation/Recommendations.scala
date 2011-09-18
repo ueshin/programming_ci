@@ -15,6 +15,7 @@
  */
 package st.happy_camper.programming_ci.recommendation
 
+import scala.collection.mutable
 import scala.math.pow
 import scala.math.sqrt
 
@@ -119,6 +120,35 @@ object Recommendations {
       case o if o != a =>
         (o -> similarity(ratings, a, o))
     }.toList.sortBy { case (o, sim) => -sim }.take(n)
+  }
+
+  /*
+   * 2.4 アイテムを推薦する
+   */
+  /**
+   * @param ratings
+   * @param a
+   * @param similarity
+   * @return
+   */
+  def getRecommendations[A, B](ratings: Ratings[A, B], a: A, similarity: Similarity[A, B] = simPearson[A, B] _) = {
+    val (totals, simSums) = ratings.keys.filter(_ != a).foldLeft(mutable.Map.empty[B, Double], mutable.Map.empty[B, Double]) {
+      case ((totals, simSums), o) =>
+        val sim = similarity(ratings, a, o)
+        if (sim > 0) {
+          ratings(o).keys.filter(ratings(a).getOrElse(_, 0.0) == 0.0).foldLeft(totals, simSums) {
+            case ((totals, simSums), it) =>
+              (totals += (it -> (totals.getOrElse(it, 0.0) + ratings(o)(it) * sim)),
+                simSums += (it -> (simSums.getOrElse(it, 0.0) + sim)))
+          }
+        } else {
+          (totals, simSums)
+        }
+    }
+    totals.map {
+      case (it, total) =>
+        (it, total / simSums(it))
+    }.toList.sortBy { case (it, score) => -score }
   }
 
 }
