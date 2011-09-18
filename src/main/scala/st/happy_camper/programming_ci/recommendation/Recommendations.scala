@@ -170,4 +170,20 @@ object Recommendations {
 
   val Movies = transform(Critics)
 
+  /*
+   * 2.7.1 アイテム間の類似度データセットを作る
+   */
+  /**
+   * @param ratings
+   * @param n
+   * @param similarity
+   * @return
+   */
+  def calculateSimilarItems[A, B](ratings: Ratings[A, B], n: Int = 10, similarity: Similarity[B, A] = simDistance[B, A] _) = {
+    val tr = transform(ratings)
+    tr.keys.map { it =>
+      it -> topMatches(tr, it, n, similarity)
+    }.toMap
+  }
+
 }
