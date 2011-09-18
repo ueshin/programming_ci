@@ -102,4 +102,23 @@ object Recommendations {
     }
   }
 
+  /*
+   * 2.3.4 評者をランキングする
+   */
+  type Similarity[A, B] = (Ratings[A, B], A, A) => Double
+
+  /**
+   * @param ratings
+   * @param a
+   * @param n
+   * @param similarity
+   * @return
+   */
+  def topMatches[A, B](ratings: Ratings[A, B], a: A, n: Int = 5, similarity: Similarity[A, B] = simPearson[A, B] _) = {
+    ratings.keys.collect {
+      case o if o != a =>
+        (o -> similarity(ratings, a, o))
+    }.toList.sortBy { case (o, sim) => -sim }.take(n)
+  }
+
 }
