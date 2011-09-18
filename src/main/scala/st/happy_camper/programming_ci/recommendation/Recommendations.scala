@@ -69,4 +69,37 @@ object Recommendations {
     }
   }
 
+  /*
+   * 2.3.2 ピアソン相関によるスコア
+   */
+  /**
+   * @param ratings
+   * @param a1
+   * @param a2
+   * @return
+   */
+  def simPearson[A, B](ratings: Ratings[A, B], a1: A, a2: A) = {
+    val si = ratings(a1).keys.collect {
+      case it if ratings(a2).contains(it) => it
+    }.toList
+    if (si.size > 0) {
+      val n = si.size
+
+      val sum1 = (si.map { it => ratings(a1)(it) }).sum
+      val sum2 = (si.map { it => ratings(a2)(it) }).sum
+
+      val sum1Sq = (si.map { it => pow(ratings(a1)(it), 2.0) }).sum
+      val sum2Sq = (si.map { it => pow(ratings(a2)(it), 2.0) }).sum
+
+      val pSum = (si.map { it => ratings(a1)(it) * ratings(a2)(it) }).sum
+
+      val num = pSum - (sum1 * sum2 / n)
+      val den = sqrt((sum1Sq - pow(sum1, 2.0) / n) * (sum2Sq - pow(sum2, 2.0) / n))
+
+      if (den == 0.0) 0.0 else num / den
+    } else {
+      0.0
+    }
+  }
+
 }
