@@ -15,9 +15,15 @@
  */
 package st.happy_camper.programming_ci.recommendation
 
+import java.io.File
+
 import scala.collection.mutable
+import scala.io.Codec
+import scala.io.Source
 import scala.math.pow
 import scala.math.sqrt
+
+import io.Codec.charset2codec
 
 /**
  * @author ueshin
@@ -207,6 +213,37 @@ object Recommendations {
     scores.map {
       case (it, score) => (it -> score / totalSim(it))
     }.toList.sortBy { case (it, score) => -score }
+  }
+
+  /*
+   * 2.8 MovieLensのデータセットを使う
+   */
+  /**
+   * @param path
+   * @return
+   */
+  def loadMovieLens(path: String = "src/test/resources"): Ratings[Int, String] = {
+    val ItemLineRegexp = """(\d+)\|([^|]+)\|.*""".r
+    val itemSource = Source.fromFile(new File(path, "u.item"))(Codec.ISO8859)
+    val items = try {
+      itemSource.getLines.map {
+        case ItemLineRegexp(movieid, title) => (movieid -> title)
+      }.toMap
+    } finally {
+      itemSource.close
+    }
+
+    val DataLineRegexp = """(\d+)\t(\d+)\t(\d+)\t(\d+)""".r
+    val dataSource = Source.fromFile(new File(path, "u.data"))
+    try {
+      dataSource.getLines.foldLeft(Map.empty[Int, Map[String, Double]]) {
+        case (ratings, DataLineRegexp(user, movieid, rating, ts)) =>
+          ratings + (user.toInt -> (ratings.getOrElse(user.toInt, Map.empty[String, Double]) + (items(movieid) -> rating.toDouble)))
+        case (ratings, _) => ratings
+      }
+    } finally {
+      dataSource.close
+    }
   }
 
 }
