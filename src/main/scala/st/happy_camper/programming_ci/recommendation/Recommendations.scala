@@ -151,4 +151,23 @@ object Recommendations {
     }.toList.sortBy { case (it, score) => -score }
   }
 
+  /*
+   * 2.5 似ている製品
+   */
+  /**
+   * @param ratings
+   * @return
+   */
+  def transform[A, B](ratings: Ratings[A, B]): Ratings[B, A] = {
+    ratings.foldLeft(Map.empty[B, Map[A, Double]]) {
+      case (transform, (a, ratings)) =>
+        ratings.foldLeft(transform) {
+          case (transform, (b, rating)) =>
+            transform + (b -> (transform.getOrElse(b, Map.empty[A, Double]) + (a -> rating)))
+        }
+    }
+  }
+
+  val Movies = transform(Critics)
+
 }
