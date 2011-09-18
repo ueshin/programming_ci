@@ -15,9 +15,13 @@
  */
 package st.happy_camper.programming_ci.recommendation
 
+import java.security.MessageDigest
+
+import scala.collection.mutable
 import scala.io.Source
 import scala.xml.parsing.ConstructingParser
-import java.security.MessageDigest
+
+import st.happy_camper.programming_ci.recommendation.Recommendations.Ratings
 
 /**
  * @author ueshin
@@ -64,6 +68,40 @@ object DeliciousRec {
       ConstructingParser.fromSource(src, false).document
     } finally {
       src.close
+    }
+  }
+
+  /*
+   * 2.6.2 データセットを作る
+   */
+  /**
+   * @param tag
+   * @param count
+   * @return
+   */
+  def initializeUserDict(tag: String, count: Int = 5): Ratings[String, String] = {
+    (getPopular(tag) \\ "item" \ "link").take(count).foldLeft(Map.empty[String, Map[String, Double]]) { (userDict, link) =>
+      (getUrlPosts(link.text) \\ "item" \ "creator").foldLeft(userDict) { (userDict, user) =>
+        userDict + (user.text -> Map.empty[String, Double])
+      }
+    }
+  }
+
+  /**
+   * @param userDict
+   */
+  def fillItems(userDict: Ratings[String, String]): Ratings[String, String] = {
+    val allItems = mutable.Set.empty[String]
+    val dict = userDict.keys.foldLeft(userDict) { (userDict, user) =>
+      (getUserPosts(user) \\ "item" \ "link").foldLeft(userDict) { (userDict, link) =>
+        allItems.add(link.text)
+        userDict + (user -> (userDict(user) + (link.text -> 1.0)))
+      }
+    }
+    dict.keys.foldLeft(dict) { (dict, user) =>
+      allItems.foldLeft(dict) { (dict, item) =>
+        dict + (user -> (dict(user) + (item -> dict(user).getOrElse(item, 0.0))))
+      }
     }
   }
 
