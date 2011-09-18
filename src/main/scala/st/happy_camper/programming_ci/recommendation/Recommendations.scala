@@ -186,4 +186,27 @@ object Recommendations {
     }.toMap
   }
 
+  /*
+   * 2.7.2 推薦を行う
+   */
+  /**
+   * @param ratings
+   * @param itsims
+   * @param a
+   */
+  def getRecommendedItems[A, B](ratings: Ratings[A, B], itsims: Map[B, List[(B, Double)]], a: A) = {
+    val (scores, totalSim) = ratings(a).foldLeft(Map.empty[B, Double], Map.empty[B, Double]) {
+      case ((scores, totalSim), (it, rating)) =>
+        itsims(it).foldLeft(scores, totalSim) {
+          case ((scores, totalSim), (it, sim)) if !ratings(a).contains(it) =>
+            (scores + (it -> (scores.getOrElse(it, 0.0) + sim * rating)),
+              totalSim + (it -> (totalSim.getOrElse(it, 0.0) + sim)))
+          case ((scores, totalSim), _) => (scores, totalSim)
+        }
+    }
+    scores.map {
+      case (it, score) => (it -> score / totalSim(it))
+    }.toList.sortBy { case (it, score) => -score }
+  }
+
 }
