@@ -211,4 +211,22 @@ object Clusters {
     ImageIO.write(im, "jpeg", new File(jpeg))
   }
 
+  /*
+   * 3.5 列のクラスタリング
+   */
+  /**
+   * @param data
+   * @return
+   */
+  def rotateMatrix(data: List[List[Double]]) = {
+    val result = mutable.ListBuffer.empty[mutable.ListBuffer[Double]]
+    (0 until data.map(_.size).max).foreach { i =>
+      result += mutable.ListBuffer.empty[Double]
+      (0 until data.size).foreach { j =>
+        result(i) += (if (data(j).isDefinedAt(i)) data(j)(i) else 0.0)
+      }
+    }
+    result.map(_.toList).toList
+  }
+
 }
