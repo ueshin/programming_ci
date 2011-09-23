@@ -16,11 +16,20 @@
 package st.happy_camper.programming_ci
 package clustering
 
+import java.awt.geom.Line2D
+import java.awt.geom.Rectangle2D
+import java.awt.image.BufferedImage
+import java.awt.Color
+import java.io.File
+
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.io.Source
+import scala.math.max
 import scala.math.pow
 import scala.math.sqrt
+
+import javax.imageio.ImageIO
 
 /**
  * @author ueshin
@@ -122,6 +131,84 @@ object Clusters {
         case None    => clust.id
       })
     }
+  }
+
+  /*
+   * 3.4 デンドログラムを描く
+   */
+  /**
+   * @param clust
+   * @return
+   */
+  def getHeight(clust: BiCluster): Double = {
+    if (clust.id < 0) {
+      clust.left.map(getHeight).getOrElse(0.0) + clust.right.map(getHeight).getOrElse(0.0)
+    } else {
+      1.0
+    }
+  }
+
+  /**
+   * @param clust
+   * @return
+   */
+  def getDepth(clust: BiCluster): Double = {
+    if (clust.id < 0) {
+      max(clust.left.map(getDepth).getOrElse(0.0), clust.right.map(getDepth).getOrElse(0.0)) + clust.distance
+    } else {
+      0.0
+    }
+  }
+
+  /**
+   * @param clust
+   * @param labels
+   * @param jpeg
+   */
+  def drawDendrogram(clust: BiCluster, labels: Option[List[String]] = None, jpeg: String = "clusters.jpg"): Unit = {
+    val h = getHeight(clust) * 20.0
+    val w = 1200.0
+    val depth = getDepth(clust)
+
+    val scaling = (w - 150.0) / depth
+
+    val im = new BufferedImage(w.toInt + 120, h.toInt + 20, BufferedImage.TYPE_INT_RGB)
+    val g = im.createGraphics()
+    g.setColor(Color.WHITE)
+    g.fill(new Rectangle2D.Double(0, 0, w + 120.0, h + 20.0))
+    g.setColor(Color.RED)
+    g.draw(new Line2D.Double(10.0, h / 2 + 10.0, 20.0, h / 2 + 10.0))
+
+    def drawNode(clust: BiCluster, x: Double, y: Double): Unit = {
+      if (clust.id < 0) {
+        val h1 = clust.left.map(getHeight).getOrElse(0.0) * 20.0
+        val h2 = clust.right.map(getHeight).getOrElse(0.0) * 20.0
+        val top = y - (h1 + h2) / 2.0
+        val bottom = y + (h1 + h2) / 2.0
+
+        val ll = clust.distance * scaling
+
+        g.setColor(Color.RED)
+        g.draw(new Line2D.Double(x, top + h1 / 2, x, bottom - h2 / 2))
+        g.draw(new Line2D.Double(x, top + h1 / 2, x + ll, top + h1 / 2))
+        g.draw(new Line2D.Double(x, bottom - h2 / 2, x + ll, bottom - h2 / 2))
+
+        clust.left.foreach(drawNode(_, x + ll, top + h1 / 2))
+        clust.right.foreach(drawNode(_, x + ll, bottom - h2 / 2))
+      } else {
+        g.setColor(Color.BLACK)
+        g.drawString(labels match {
+          case Some(l) => l(clust.id)
+          case None    => clust.id.toString
+        }, x.toInt, y.toInt)
+      }
+    }
+
+    drawNode(clust, 20, h / 2 + 10)
+
+    g.drawImage(im, null, 0, 0)
+
+    ImageIO.write(im, "jpeg", new File(jpeg))
   }
 
 }
