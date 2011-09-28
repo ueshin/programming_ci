@@ -28,6 +28,7 @@ import scala.io.Source
 import scala.math.max
 import scala.math.pow
 import scala.math.sqrt
+import scala.util.Random
 
 import javax.imageio.ImageIO
 
@@ -227,6 +228,67 @@ object Clusters {
       }
     }
     result.map(_.toList).toList
+  }
+
+  /*
+   * 3.6 K平均法によるクラスタリング
+   */
+  /**
+   * @param rows
+   * @param k
+   * @param distance
+   * @return
+   */
+  def kcluster(rows: List[List[Double]], k: Int = 4, distance: Distance = pearson): List[List[Int]] = {
+    val ranges = rotateMatrix(rows).map(row => (row.min, row.max))
+
+    @tailrec
+    def iterate(clusters: List[List[Double]], lastmatches: List[mutable.ListBuffer[Int]] = Nil, t: Int = 100): List[List[Int]] = {
+      if (t > 0) {
+        println("Iteration %d".format(100 - t))
+        val bestmatches: List[mutable.ListBuffer[Int]] = (for (_ <- 0 until k) yield { mutable.ListBuffer.empty[Int] }).toList
+        for (j <- 0 until rows.size) {
+          val row = rows(j)
+          var bestmatch = 0
+          for (i <- 0 until k) {
+            val d = distance(clusters(i), row)
+            if (d < distance(clusters(bestmatch), row)) {
+              bestmatch = i
+            }
+          }
+          bestmatches(bestmatch) += j
+        }
+
+        if (bestmatches == lastmatches) {
+          bestmatches.map(_.toList.sorted).sortBy(_(0))
+        } else {
+          iterate((for (i <- 0 until k) yield {
+            if (bestmatches(i).size > 0) {
+              val avgs = mutable.ListBuffer((0 until ranges.size).map(_ => 0.0): _*)
+              bestmatches(i).foreach { rowid =>
+                for (m <- 0 until rows(rowid).size) {
+                  avgs(m) += rows(rowid)(m)
+                }
+                for (j <- 0 until avgs.size) {
+                  avgs(j) /= bestmatches(i).size
+                }
+              }
+              avgs.toList
+            } else {
+              clusters(i)
+            }
+          }).toList, bestmatches, t - 1)
+        }
+      } else {
+        lastmatches.map(_.toList.sorted).sortBy(_(0))
+      }
+    }
+
+    iterate((for (_ <- 0 until k) yield {
+      (0 until ranges.size).map { i =>
+        Random.nextDouble * (ranges(i)._2 - ranges(i)._1) + ranges(i)._1
+      }.toList
+    }).toList)
   }
 
 }
