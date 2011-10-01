@@ -291,4 +291,24 @@ object Clusters {
     }).toList)
   }
 
+  /*
+   * 3.7.4 距離の基準を定義する
+   */
+  /**
+   * @param v1
+   * @param v2
+   * @return
+   */
+  def tanimoto(v1: List[Double], v2: List[Double]) = {
+    val c1 = v1.filter(_ != 0.0).size.toDouble
+    val c2 = v2.filter(_ != 0.0).size.toDouble
+    val shr = ((v1.zipWithIndex.collect {
+      case (v, i) if v != 0.0 => i
+    }.toSet) & (v2.zipWithIndex.collect {
+      case (v, i) if v != 0.0 => i
+    }).toSet).size.toDouble
+
+    1.0 - (shr / (c1 + c2 - shr))
+  }
+
 }
