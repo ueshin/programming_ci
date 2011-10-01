@@ -25,8 +25,10 @@ import java.io.File
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.io.Source
+import scala.math.abs
 import scala.math.max
 import scala.math.pow
+import scala.math.random
 import scala.math.sqrt
 import scala.util.Random
 
@@ -309,6 +311,80 @@ object Clusters {
     }).toSet).size.toDouble
 
     1.0 - (shr / (c1 + c2 - shr))
+  }
+
+  /*
+   * 3.8 データを2次元で見る
+   */
+  /**
+   * @param data
+   * @param rate
+   * @param distance
+   * @return
+   */
+  def scaleDown(data: List[List[Double]], rate: Double = 0.01, distance: Distance = pearson) = {
+    val n = data.size
+
+    val realDist = data.map { i =>
+      data.map { j =>
+        distance(i, j)
+      }
+    }
+
+    @tailrec
+    def iterate(loc: List[(Double, Double)], lasterror: Double = Double.MaxValue, m: Int = 1000): List[(Double, Double)] = {
+      if (m > 0) {
+        val fakeDist = loc.map { i =>
+          loc.map { j =>
+            sqrt(pow(i._1 - j._1, 2) + pow(i._2 - j._2, 2))
+          }
+        }
+
+        val grad = mutable.ListBuffer((0 until n).map(_ => (0.0, 0.0)): _*)
+        var totalerror = 0.0
+        for (i <- 0 until n) {
+          for (j <- 0 until n if j != i) {
+            val errorterm = (fakeDist(j)(i) - realDist(j)(i)) / realDist(j)(i)
+            grad(i) = (grad(i)._1 + ((loc(i)._1 - loc(j)._1) / fakeDist(j)(i)) * errorterm,
+              grad(i)._2 + ((loc(i)._2 - loc(j)._2) / fakeDist(j)(i)) * errorterm)
+            totalerror += abs(errorterm)
+          }
+        }
+        println("%4d".format(m) + ":" + totalerror)
+
+        if (lasterror < totalerror) {
+          loc
+        } else {
+          iterate(loc.zip(grad).map {
+            case (loc, grad) =>
+              (loc._1 - rate * grad._1, loc._2 - rate * grad._2)
+          }, totalerror, m - 1)
+        }
+      } else {
+        loc
+      }
+    }
+
+    iterate((0 until n).map(_ => (random, random)).toList)
+  }
+
+  /**
+   * @param data
+   * @param labels
+   * @param jpeg
+   */
+  def draw2d(data: List[(Double, Double)], labels: List[String], jpeg: String = "mds2d.jpg"): Unit = {
+    val im = new BufferedImage(2000, 2000, BufferedImage.TYPE_INT_RGB)
+    val g = im.createGraphics()
+    g.setColor(Color.WHITE)
+    g.fill(new Rectangle2D.Double(0, 0, 2000, 2000))
+    g.setColor(Color.BLACK)
+    for (i <- 0 until data.size) {
+      g.drawString(labels(i), ((data(i)._1 + 0.5) * 1000).toInt, ((data(i)._2 + 0.5) * 1000).toInt)
+    }
+    g.drawImage(im, null, 0, 0)
+
+    ImageIO.write(im, "jpeg", new File(jpeg))
   }
 
 }
