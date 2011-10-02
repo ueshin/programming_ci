@@ -19,6 +19,8 @@ package searching_and_ranking
 import java.lang.Class
 import java.net.URL
 import java.sql.DriverManager
+import java.sql.SQLException
+import java.sql.Statement
 
 import scala.annotation.tailrec
 import scala.xml.parsing.NoBindingFactoryAdapter
@@ -68,41 +70,17 @@ object SearchEngine {
               if (url.getProtocol().startsWith("http") && !isIndexed(url)) Option(url) else None
             }
           } catch {
-            case e => println("Could not open " + page); None
+            case e: SQLException => e.printStackTrace; None
+            case e               => println("Could not open " + page); None
           }
         }, depth - 1)
       }
     }
 
-    /**
-     * @param url
-     * @param xhtml
-     */
-    def addToIndex(url: URL, xhtml: Node) = {
-      println("Indexing " + url)
-    }
-
-    /**
-     * @param url
-     * @return
-     */
-    def isIndexed(url: URL) = {
-      false
-    }
-
-    /**
-     * @param urlFrom
-     * @param urlTo
-     * @param linkText
-     */
-    def addLinkRef(urlFrom: URL, urlTo: URL, linkText: String) = {
-
-    }
-
     /*
      * 4.3 インデックスの作成
      */
-    private val conn = DriverManager.getConnection("jdbc:sqlite:" + dbname)
+    val conn = DriverManager.getConnection("jdbc:sqlite:" + dbname)
 
     /**
      *
@@ -150,6 +128,107 @@ object SearchEngine {
         case ""   => None
         case word => Some(word.toLowerCase)
       }.toList
+    }
+
+    /*
+     * 4.3.3 インデックスへの追加
+     */
+    /**
+     * @param url
+     * @param xhtml
+     */
+    def addToIndex(url: URL, xhtml: Node): Unit = {
+      if (!isIndexed(url)) {
+        println("Indexing " + url)
+
+        val text = getTextOnly(xhtml)
+        val words = separateWords(text)
+
+        val urlid = getEntryId("urllist", "url", url.toString)
+
+        for (i <- 0 until words.size) {
+          val word = words(i)
+          if (!IgnoreWords.contains(word)) {
+            val wordid = getEntryId("wordlist", "word", word)
+            using(conn.createStatement()) { stmt =>
+              stmt.executeUpdate("insert into wordlocation(urlid, wordid, location) values (%d, %d, %d)".format(urlid, wordid, i))
+            }
+          }
+        }
+      }
+    }
+
+    /**
+     * @param urlFrom
+     * @param urlTo
+     * @param linkText
+     */
+    def addLinkRef(urlFrom: URL, urlTo: URL, linkText: String): Unit = {
+      val words = separateWords(linkText)
+      val fromid = getEntryId("urllist", "url", urlFrom.toString)
+      val toid = getEntryId("urllist", "url", urlTo.toString())
+      if (fromid != toid) {
+        using(conn.createStatement()) { stmt =>
+          stmt.executeUpdate("insert into link(fromid, toid) values(%d, %d)".format(fromid, toid))
+          val linkid = using(stmt.getGeneratedKeys()) { rs =>
+            if (rs.next()) {
+              rs.getLong(1)
+            } else {
+              throw new SQLException
+            }
+          }
+          words.foreach { word =>
+            if (!IgnoreWords.contains(word)) {
+              val wordid = getEntryId("wordlist", "word", word)
+              stmt.executeUpdate("insert into linkwords(linkid, wordid) values(%d, %d)".format(linkid, wordid))
+            }
+          }
+        }
+      }
+    }
+
+    /**
+     * @param table
+     * @param field
+     * @param value
+     * @param createNew
+     * @return
+     */
+    def getEntryId(table: String, field: String, value: String, createNew: Boolean = true): Int = {
+      using(conn.createStatement()) { stmt =>
+        using(stmt.executeQuery("select rowid from %s where %s = '%s'".format(table, field, value))) { rs =>
+          if (rs.next) {
+            rs.getInt(1)
+          } else {
+            stmt.executeUpdate("insert into %s (%s) values ('%s')".format(table, field, value))
+            using(stmt.getGeneratedKeys()) { rs =>
+              if (rs.next) {
+                rs.getInt(1)
+              } else {
+                throw new SQLException
+              }
+            }
+          }
+        }
+      }
+    }
+
+    /**
+     * @param url
+     * @return
+     */
+    def isIndexed(url: URL): Boolean = {
+      using(conn.createStatement()) { stmt =>
+        using(stmt.executeQuery("select rowid from urllist where url = '%s'".format(url.toString))) { rs =>
+          if (rs.next) {
+            using(stmt.executeQuery("select * from wordlocation where urlid = %d".format(rs.getInt(1)))) { rs =>
+              rs.next
+            }
+          } else {
+            false
+          }
+        }
+      }
     }
   }
 
