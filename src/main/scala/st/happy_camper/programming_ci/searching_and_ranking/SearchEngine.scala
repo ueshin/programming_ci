@@ -299,7 +299,7 @@ object SearchEngine {
     def getScoredList(rows: List[List[Int]], wordids: List[Int]) = {
       val totalScores = rows.collect { case id :: row => (id -> 0.0) } ++: mutable.Map.empty[Int, Double]
 
-      val weights = List.empty[(Double, Map[Int, Double])]
+      val weights = List((1.0, frequencyScore(rows)))
 
       weights.foreach {
         case (weight, scores) =>
@@ -359,6 +359,22 @@ object SearchEngine {
             (u -> c / max)
         }
       }
+    }
+
+    /*
+     * 4.5.2 単語の頻度
+     */
+    /**
+     * @param rows
+     * @return
+     */
+    def frequencyScore(rows: List[List[Int]]) = {
+      val counts = rows.collect { case id :: row => (id -> 0.0) } ++: mutable.Map.empty[Int, Double]
+      rows.collect {
+        case id :: row =>
+          counts(id) += 1
+      }
+      normalizeScores(counts.toMap)
     }
   }
 
