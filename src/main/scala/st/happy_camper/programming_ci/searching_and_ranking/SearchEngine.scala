@@ -336,6 +336,30 @@ object SearchEngine {
           println(score + "\t" + getUrlName(urlid).getOrElse("-"))
       }
     }
+
+    /*
+     * 4.5.1 正規化関数
+     */
+    /**
+     * @param scores
+     * @param smallIsBetter
+     * @return
+     */
+    def normalizeScores(scores: Map[Int, Double], smallIsBetter: Boolean = false) = {
+      if (smallIsBetter) {
+        val min = scores.map(_._2).min
+        scores.map {
+          case (u, l) =>
+            (u -> min / l)
+        }
+      } else {
+        val max = scores.map(_._2).max
+        scores.map {
+          case (u, c) =>
+            (u -> c / max)
+        }
+      }
+    }
   }
 
 }
