@@ -287,6 +287,55 @@ object SearchEngine {
         (rows.toList, wordids.toList)
       }
     }
+
+    /*
+     * 4.5 内容ベースの順位付け
+     */
+    /**
+     * @param rows
+     * @param wordids
+     * @return
+     */
+    def getScoredList(rows: List[List[Int]], wordids: List[Int]) = {
+      val totalScores = rows.collect { case id :: row => (id -> 0.0) } ++: mutable.Map.empty[Int, Double]
+
+      val weights = List.empty[(Double, Map[Int, Double])]
+
+      weights.foreach {
+        case (weight, scores) =>
+          totalScores.foreach {
+            case (id, score) =>
+              totalScores(id) = score + weight * scores(id)
+          }
+      }
+
+      totalScores.toList
+    }
+
+    /**
+     * @param id
+     * @return
+     */
+    def getUrlName(id: Int) = {
+      using(conn.createStatement()) { stmt =>
+        using(stmt.executeQuery("select url from urllist where rowid = %d".format(id))) { rs =>
+          if (rs.next) Some(rs.getString(1)) else None
+        }
+      }
+    }
+
+    /**
+     * @param q
+     */
+    def query(q: String, n: Int = 10): Unit = {
+      val (rows, wordids) = getMatchRows(q)
+      val scores = getScoredList(rows, wordids)
+      val rankedScores = scores.sortBy(-_._2)
+      rankedScores.take(n).foreach {
+        case (urlid, score) =>
+          println(score + "\t" + getUrlName(urlid).getOrElse("-"))
+      }
+    }
   }
 
 }
