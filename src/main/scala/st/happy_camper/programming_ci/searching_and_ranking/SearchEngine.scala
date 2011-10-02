@@ -23,6 +23,7 @@ import java.sql.SQLException
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.math.abs
 import scala.xml.parsing.NoBindingFactoryAdapter
 import scala.xml.Node
 
@@ -299,7 +300,7 @@ object SearchEngine {
     def getScoredList(rows: List[List[Int]], wordids: List[Int]) = {
       val totalScores = rows.collect { case id :: row => (id -> 0.0) } ++: mutable.Map.empty[Int, Double]
 
-      val weights = List((1.0, frequencyScore(rows)), (1.5, locationScore(rows)))
+      val weights = List((1.0, frequencyScore(rows)), (1.5, locationScore(rows)), (2.0, distanceScore(rows)))
 
       weights.foreach {
         case (weight, scores) =>
@@ -394,6 +395,34 @@ object SearchEngine {
           }
       }
       normalizeScores(locations.toMap, true)
+    }
+
+    /*
+     * 4.5.4 単語間の距離
+     */
+    /**
+     * @param rows
+     * @return
+     */
+    def distanceScore(rows: List[List[Int]]) = {
+      if (rows(0).size <= 2) {
+        rows.collect { case id :: row => id -> 1.0 }.toMap
+      } else {
+        val minDistance = rows.collect {
+          case id :: row =>
+            id -> Double.MaxValue
+        } ++: mutable.Map.empty[Int, Double]
+        rows.collect {
+          case id :: row =>
+            val dist = (for (i <- 1 until row.size) yield {
+              abs(row(i) - row(i - 1))
+            }).sum
+            if (dist < minDistance(id)) {
+              minDistance(id) = dist
+            }
+        }
+        normalizeScores(minDistance.toMap, true)
+      }
     }
   }
 
