@@ -299,7 +299,7 @@ object SearchEngine {
     def getScoredList(rows: List[List[Int]], wordids: List[Int]) = {
       val totalScores = rows.collect { case id :: row => (id -> 0.0) } ++: mutable.Map.empty[Int, Double]
 
-      val weights = List((1.0, frequencyScore(rows)))
+      val weights = List((1.0, frequencyScore(rows)), (1.5, locationScore(rows)))
 
       weights.foreach {
         case (weight, scores) =>
@@ -375,6 +375,25 @@ object SearchEngine {
           counts(id) += 1
       }
       normalizeScores(counts.toMap)
+    }
+
+    /*
+     * 4.5.3 ドキュメント中での位置
+     */
+    /**
+     * @param rows
+     * @return
+     */
+    def locationScore(rows: List[List[Int]]) = {
+      val locations = rows.collect { case id :: row => (id -> Double.MaxValue) } ++: mutable.Map.empty[Int, Double]
+      rows.collect {
+        case id :: row =>
+          val loc = row.sum
+          if (loc < locations(id)) {
+            locations(id) = loc
+          }
+      }
+      normalizeScores(locations.toMap, true)
     }
   }
 
