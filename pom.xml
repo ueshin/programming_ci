@@ -165,6 +165,17 @@
 			<version>${scala.version}</version>
 		</dependency>
 		<dependency>
+			<groupId>net.sourceforge.nekohtml</groupId>
+			<artifactId>nekohtml</artifactId>
+			<version>1.9.15</version>
+			<exclusions>
+				<exclusion>
+					<groupId>xml-apis</groupId>
+					<artifactId>xml-apis</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
 			<groupId>org.scala-tools.testing</groupId>
 			<artifactId>specs_2.9.1</artifactId>
 			<version>1.6.9</version>
