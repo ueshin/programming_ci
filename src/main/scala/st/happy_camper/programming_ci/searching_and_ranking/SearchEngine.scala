@@ -16,6 +16,7 @@
 package st.happy_camper.programming_ci
 package searching_and_ranking
 
+import java.lang.Class
 import java.net.URL
 import java.sql.DriverManager
 
@@ -107,6 +108,27 @@ object SearchEngine {
      *
      */
     def close() = conn.close()
+
+    /*
+     * 4.3.1 スキーマの設定
+     */
+    /**
+     *
+     */
+    def createIndexTables(): Unit = {
+      using(conn.createStatement()) { stmt =>
+        stmt.executeUpdate("create table urllist(url)")
+        stmt.executeUpdate("create table wordlist(word)")
+        stmt.executeUpdate("create table wordlocation(urlid, wordid, location)")
+        stmt.executeUpdate("create table link(fromid integer, toid integer)")
+        stmt.executeUpdate("create table linkwords(wordid, linkid)")
+        stmt.executeUpdate("create index wordidx on wordlist(word)")
+        stmt.executeUpdate("create index urlidx on urllist(url)")
+        stmt.executeUpdate("create index wordurlidx on wordlocation(wordid)")
+        stmt.executeUpdate("create index urltoidx on link(toid)")
+        stmt.executeUpdate("create index urlfromidx on link(fromid)")
+      }
+    }
   }
 
 }
