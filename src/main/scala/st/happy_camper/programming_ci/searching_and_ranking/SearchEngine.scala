@@ -17,6 +17,7 @@ package st.happy_camper.programming_ci
 package searching_and_ranking
 
 import java.net.URL
+import java.sql.DriverManager
 
 import scala.annotation.tailrec
 import scala.xml.parsing.NoBindingFactoryAdapter
@@ -33,7 +34,9 @@ object SearchEngine {
   /*
    * 4.1 検索ランキングとは？
    */
-  object Crawler {
+  class Crawler(dbname: String = "") {
+
+    Class.forName("org.sqlite.JDBC")
 
     /*
      * 4.2.2 クローラのコード
@@ -44,7 +47,7 @@ object SearchEngine {
      * @param pages
      */
     @tailrec
-    def crawl(pages: Set[URL], depth: Int = 2): Unit = {
+    final def crawl(pages: Set[URL], depth: Int = 2): Unit = {
       if (depth > 0) {
         crawl(pages.flatMap { page =>
           try {
@@ -94,6 +97,16 @@ object SearchEngine {
     def addLinkRef(urlFrom: URL, urlTo: URL, linkText: String) = {
 
     }
+
+    /*
+     * 4.3 インデックスの作成
+     */
+    private val conn = DriverManager.getConnection("jdbc:sqlite:" + dbname)
+
+    /**
+     *
+     */
+    def close() = conn.close()
   }
 
 }

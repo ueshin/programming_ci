@@ -176,10 +176,9 @@
 			</exclusions>
 		</dependency>
 		<dependency>
-			<groupId>org.scala-tools.testing</groupId>
-			<artifactId>specs_2.9.1</artifactId>
-			<version>1.6.9</version>
-			<scope>test</scope>
+			<groupId>org.xerial</groupId>
+			<artifactId>sqlite-jdbc</artifactId>
+			<version>3.7.2</version>
 		</dependency>
 	</dependencies>
 
