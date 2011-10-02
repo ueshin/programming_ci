@@ -129,6 +129,28 @@ object SearchEngine {
         stmt.executeUpdate("create index urlfromidx on link(fromid)")
       }
     }
+
+    /*
+     * 4.3.2 ページ内の単語を探し出す
+     */
+    /**
+     * @param xhtml
+     * @return
+     */
+    def getTextOnly(xhtml: Node) = {
+      xhtml.text
+    }
+
+    /**
+     * @param text
+     * @return
+     */
+    def separateWords(text: String) = {
+      text.split("\\W+").flatMap {
+        case ""   => None
+        case word => Some(word.toLowerCase)
+      }.toList
+    }
   }
 
 }
