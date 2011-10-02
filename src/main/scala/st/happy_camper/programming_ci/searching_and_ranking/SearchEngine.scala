@@ -20,9 +20,9 @@ import java.lang.Class
 import java.net.URL
 import java.sql.DriverManager
 import java.sql.SQLException
-import java.sql.Statement
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.xml.parsing.NoBindingFactoryAdapter
 import scala.xml.Node
 
@@ -228,6 +228,63 @@ object SearchEngine {
             false
           }
         }
+      }
+    }
+  }
+
+  /*
+   * 4.4 問い合わせ
+   */
+  class Searcher(dbname: String) {
+
+    Class.forName("org.sqlite.JDBC")
+
+    val conn = DriverManager.getConnection("jdbc:sqlite:" + dbname)
+
+    /**
+     *
+     */
+    def close() = conn.close()
+
+    /**
+     * @param q
+     * @return
+     */
+    def getMatchRows(q: String) = {
+      var fieldlist = "w0.urlid"
+      var tablelist = ""
+      var clauselist = ""
+      val wordids = mutable.ListBuffer.empty[Int]
+
+      var tablenumber = 0
+      using(conn.createStatement()) { stmt =>
+        q.split(" ").foreach { word =>
+          val wordrow = using(stmt.executeQuery("select rowid from wordlist where word = '%s'".format(word))) { rs =>
+            if (rs.next) Some(rs.getInt(1)) else None
+          }
+          wordrow.foreach { wordid =>
+            wordids += wordid
+            if (tablenumber > 0) {
+              tablelist += ", "
+              clauselist += " and w%d.urlid = w%d.urlid and ".format(tablenumber - 1, tablenumber)
+            }
+            fieldlist += ", w%d.location".format(tablenumber)
+            tablelist += "wordlocation w%d".format(tablenumber)
+            clauselist += "w%d.wordid = %d".format(tablenumber, wordid)
+            tablenumber += 1
+          }
+        }
+
+        val fullquery = "select %s from %s where %s".format(fieldlist, tablelist, clauselist)
+        val rows = mutable.ListBuffer.empty[List[Int]]
+        using(stmt.executeQuery(fullquery)) { rs =>
+          while (rs.next) {
+            rows += rs.getInt(1) :: (0 until tablenumber).map { i =>
+              rs.getInt(i + 2)
+            }.toList
+          }
+        }
+        (rows.toList, wordids.toList)
       }
     }
   }
