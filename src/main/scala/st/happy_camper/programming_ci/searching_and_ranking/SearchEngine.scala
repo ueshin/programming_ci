@@ -358,7 +358,8 @@ object SearchEngine {
         (1.5, locationScore(rows)),
         (2.0, distanceScore(rows)),
         (2.5, inboundLinkScore(rows)),
-        (3.0, pagerankScore(rows)))
+        (3.0, pagerankScore(rows)),
+        (3.5, linkTextScore(rows, wordids)))
 
       weights.foreach {
         case (weight, scores) =>
@@ -519,6 +520,37 @@ object SearchEngine {
         }.toMap
       }
       normalizeScores(pageranks)
+    }
+
+    /*
+     * 4.6.3 リンクのテキストを利用する
+     */
+    /**
+     * @param rows
+     * @param wordids
+     * @return
+     */
+    def linkTextScore(rows: List[List[Int]], wordids: List[Int]) = {
+      val linkScores = rows.collect { case id :: row => (id -> 0.0) } ++: mutable.Map.empty[Int, Double]
+      using(conn.createStatement()) { stmt =>
+        wordids.foreach { wordid =>
+          using(stmt.executeQuery("select link.fromid, link.toid from linkwords, link where wordid = %d and linkwords.linkid = link.rowid".format(wordid))) { rs =>
+            val linkpairs = mutable.ListBuffer.empty[(Int, Int)]
+            while (rs.next) {
+              linkpairs += (rs.getInt(1) -> rs.getInt(2))
+            }
+            linkpairs.toList
+          }.foreach {
+            case (fromid, toid) =>
+              if (linkScores.contains(toid)) {
+                using(stmt.executeQuery("select score from pagerank where urlid = %d".format(fromid))) { rs =>
+                  if (rs.next) { linkScores(toid) += rs.getDouble(1) } else throw new SQLException
+                }
+              }
+          }
+        }
+      }
+      normalizeScores(linkScores.toMap)
     }
   }
 
