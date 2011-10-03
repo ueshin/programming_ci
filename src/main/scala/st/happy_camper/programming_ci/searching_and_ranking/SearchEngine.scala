@@ -300,7 +300,11 @@ object SearchEngine {
     def getScoredList(rows: List[List[Int]], wordids: List[Int]) = {
       val totalScores = rows.collect { case id :: row => (id -> 0.0) } ++: mutable.Map.empty[Int, Double]
 
-      val weights = List((1.0, frequencyScore(rows)), (1.5, locationScore(rows)), (2.0, distanceScore(rows)))
+      val weights = List(
+        (1.0, frequencyScore(rows)),
+        (1.5, locationScore(rows)),
+        (2.0, distanceScore(rows)),
+        (2.5, inboundLinkScore(rows)))
 
       weights.foreach {
         case (weight, scores) =>
@@ -423,6 +427,25 @@ object SearchEngine {
         }
         normalizeScores(minDistance.toMap, true)
       }
+    }
+
+    /*
+     * 4.6.1 単純に数えあげる
+     */
+    /**
+     * @param rows
+     * @return
+     */
+    def inboundLinkScore(rows: List[List[Int]]) = {
+      val uniqueUrl = rows.collect { case id :: row => id }.toSet
+      val inboundCount = uniqueUrl.map { id =>
+        using(conn.createStatement()) { stmt =>
+          using(stmt.executeQuery("select count(*) from link where toid = %d".format(id))) { rs =>
+            if (rs.next) (id -> rs.getDouble(1)) else throw new SQLException
+          }
+        }
+      }.toMap
+      normalizeScores(inboundCount)
     }
   }
 
