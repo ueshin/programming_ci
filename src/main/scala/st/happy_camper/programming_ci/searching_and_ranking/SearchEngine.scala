@@ -231,6 +231,59 @@ object SearchEngine {
         }
       }
     }
+
+    /*
+     * 4.6.2 PageRankアルゴリズム
+     */
+    /**
+     * @param iterations
+     */
+    def calculatePagerank(iterations: Int = 20): Unit = {
+      using(conn.createStatement()) { stmt =>
+        stmt.executeUpdate("drop table if exists pagerank")
+        stmt.executeUpdate("create table pagerank(urlid primary key, score)")
+        stmt.executeUpdate("insert into pagerank select rowid, 1.0 from urllist")
+      }
+
+      @tailrec
+      def iterate(iterations: Int): Unit = {
+        if (iterations > 0) {
+          println("Iteration %d".format(iterations))
+
+          using(conn.createStatement()) { stmt =>
+            using(stmt.executeQuery("select rowid from urllist")) { rs =>
+              val urlids = mutable.ListBuffer.empty[Int]
+              while (rs.next) {
+                urlids += rs.getInt(1)
+              }
+              urlids.toList
+            }.foreach { urlid =>
+              var pr = 0.15
+              using(stmt.executeQuery("select distinct fromid from link where toid = %d".format(urlid))) { rs =>
+                val linkers = mutable.ListBuffer.empty[Int]
+                while (rs.next) {
+                  linkers += rs.getInt(1)
+                }
+                linkers.toList
+              }.foreach { linker =>
+                val linkingPr = using(stmt.executeQuery("select score from pagerank where urlid = %d".format(linker))) { rs =>
+                  if (rs.next) rs.getDouble(1) else throw new SQLException
+                }
+                val linkingCount = using(stmt.executeQuery("select count(*) from link where fromid = %d".format(linker))) { rs =>
+                  if (rs.next) rs.getInt(1) else throw new SQLException
+                }
+                pr += 0.85 * (linkingPr / linkingCount)
+              }
+              stmt.executeUpdate("update pagerank set score = " + pr + " where urlid = " + urlid)
+            }
+          }
+
+          iterate(iterations - 1)
+        }
+      }
+
+      iterate(iterations)
+    }
   }
 
   /*
@@ -304,7 +357,8 @@ object SearchEngine {
         (1.0, frequencyScore(rows)),
         (1.5, locationScore(rows)),
         (2.0, distanceScore(rows)),
-        (2.5, inboundLinkScore(rows)))
+        (2.5, inboundLinkScore(rows)),
+        (3.0, pagerankScore(rows)))
 
       weights.foreach {
         case (weight, scores) =>
@@ -446,6 +500,25 @@ object SearchEngine {
         }
       }.toMap
       normalizeScores(inboundCount)
+    }
+
+    /*
+     * 4.6.2 PageRankアルゴリズム
+     */
+    /**
+     * @param rows
+     * @return
+     */
+    def pagerankScore(rows: List[List[Int]]) = {
+      val pageranks = using(conn.createStatement()) { stmt =>
+        rows.collect {
+          case urlid :: row =>
+            (urlid -> using(stmt.executeQuery("select score from pagerank where urlid = %d".format(urlid))) { rs =>
+              if (rs.next) rs.getDouble(1) else throw new SQLException
+            })
+        }.toMap
+      }
+      normalizeScores(pageranks)
     }
   }
 
