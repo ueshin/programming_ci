@@ -19,6 +19,9 @@ package searching_and_ranking
 import java.sql.DriverManager
 import java.sql.SQLException
 
+import scala.collection.mutable
+import scala.math.tanh
+
 /*
  * 4.7 クリックからの学習
  */
@@ -123,6 +126,102 @@ object NeuralNetwork {
           }
         }
       }
+    }
+
+    /*
+     * 4.7.3 フィードフォワード
+     */
+    /**
+     * @param wordids
+     * @param urlids
+     * @return
+     */
+    def getAllHiddenIds(wordids: List[Int], urlids: List[Int]) = {
+      val ids = mutable.Set.empty[Int]
+      wordids.foreach { wordid =>
+        using(conn.prepareStatement("select toid from wordhidden where fromid = ?")) { ps =>
+          ps.setInt(1, wordid)
+          using(ps.executeQuery()) { rs =>
+            while (rs.next) {
+              ids += rs.getInt(1)
+            }
+          }
+        }
+      }
+      urlids.foreach { urlid =>
+        using(conn.prepareStatement("select fromid from hiddenurl where toid = ?")) { ps =>
+          ps.setInt(1, urlid)
+          using(ps.executeQuery()) { rs =>
+            while (rs.next) {
+              ids += rs.getInt(1)
+            }
+          }
+        }
+      }
+      ids.toList
+    }
+
+    var wordids: List[Int] = _
+    var hiddenids: List[Int] = _
+    var urlids: List[Int] = _
+
+    var ai: mutable.ListBuffer[Double] = _
+    var ah: mutable.ListBuffer[Double] = _
+    var ao: mutable.ListBuffer[Double] = _
+
+    var wi: List[mutable.ListBuffer[Double]] = _
+    var wo: List[mutable.ListBuffer[Double]] = _
+
+    /**
+     * @param wordids
+     * @param urlids
+     */
+    def setupNetwork(wordids: List[Int], urlids: List[Int]) = {
+      this.wordids = wordids
+      this.hiddenids = getAllHiddenIds(wordids, urlids)
+      this.urlids = urlids
+
+      this.ai = wordids.map { _ => 1.0 } ++: mutable.ListBuffer.empty[Double]
+      this.ah = hiddenids.map { _ => 1.0 } ++: mutable.ListBuffer.empty[Double]
+      this.ao = urlids.map { _ => 1.0 } ++: mutable.ListBuffer.empty[Double]
+
+      this.wi = wordids.map { wordid => hiddenids.map { hiddenid => getStrength(wordid, hiddenid, 0) } ++: mutable.ListBuffer.empty[Double] }
+      this.wo = hiddenids.map { hiddenid => urlids.map { urlid => getStrength(hiddenid, urlid, 1) } ++: mutable.ListBuffer.empty[Double] }
+    }
+
+    /**
+     * @return
+     */
+    def feedForward() = {
+      for (i <- 0 until wordids.size) {
+        ai(i) = 1.0
+      }
+
+      for (j <- 0 until hiddenids.size) {
+        val sum = (0 until wordids.size).foldLeft(0.0) { (sum, i) =>
+          sum + ai(i) * wi(i)(j)
+        }
+        ah(j) = tanh(sum)
+      }
+
+      for (k <- 0 until urlids.size) {
+        val sum = (0 until hiddenids.size).foldLeft(0.0) { (sum, j) =>
+          sum + ah(j) * wo(j)(k)
+        }
+        ao(k) = tanh(sum)
+      }
+
+      ao.toList
+    }
+
+    /**
+     * @param wordids
+     * @param urlids
+     * @return
+     */
+    def getResult(wordids: List[Int], urlids: List[Int]) = {
+      setupNetwork(wordids, urlids)
+      feedForward
     }
   }
 
