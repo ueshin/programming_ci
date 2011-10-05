@@ -289,7 +289,7 @@ object SearchEngine {
   /*
    * 4.4 問い合わせ
    */
-  class Searcher(dbname: String) {
+  class Searcher(dbname: String, nndb: String) {
 
     Class.forName("org.sqlite.JDBC")
 
@@ -359,7 +359,8 @@ object SearchEngine {
         (2.0, distanceScore(rows)),
         (2.5, inboundLinkScore(rows)),
         (3.0, pagerankScore(rows)),
-        (3.5, linkTextScore(rows, wordids)))
+        (3.5, linkTextScore(rows, wordids)),
+        (4.0, nnscore(rows, wordids)))
 
       weights.foreach {
         case (weight, scores) =>
@@ -387,14 +388,15 @@ object SearchEngine {
     /**
      * @param q
      */
-    def query(q: String, n: Int = 10): Unit = {
+    def query(q: String, n: Int = 10) = {
       val (rows, wordids) = getMatchRows(q)
       val scores = getScoredList(rows, wordids)
       val rankedScores = scores.sortBy(-_._2)
-      rankedScores.take(n).foreach {
+      (wordids, rankedScores.take(n).map {
         case (urlid, score) =>
           println(score + "\t" + getUrlName(urlid).getOrElse("-"))
-      }
+          urlid
+      })
     }
 
     /*
@@ -551,6 +553,23 @@ object SearchEngine {
         }
       }
       normalizeScores(linkScores.toMap)
+    }
+
+    /*
+     * 4.7.6 検索エンジンとつなげる
+     */
+    val mynet = new NeuralNetwork.SearchNet(nndb)
+
+    /**
+     * @param rows
+     * @param wordids
+     * @return
+     */
+    def nnscore(rows: List[List[Int]], wordids: List[Int]) = {
+      val urlids = rows.collect { case id :: row => id }.toSet.toList
+      val nnres = mynet.getResult(wordids, urlids)
+      val scores = (0 until urlids.size).map { i => (urlids(i) -> nnres(i)) }.toMap
+      normalizeScores(scores)
     }
   }
 
