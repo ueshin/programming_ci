@@ -223,6 +223,74 @@ object NeuralNetwork {
       setupNetwork(wordids, urlids)
       feedForward
     }
+
+    /*
+     * 4.7.4 バックプロパゲーションによるトレーニング
+     */
+    /**
+     * @param y
+     * @return
+     */
+    def dtanh(y: Double) = 1.0 - y * y
+
+    /**
+     * @param targets
+     * @param n
+     */
+    def backPropagate(targets: List[Double], n: Double = 0.5): Unit = {
+      var outputDeltas = urlids.map { _ => 0.0 } ++: mutable.ListBuffer.empty[Double]
+      for (k <- 0 until urlids.size) {
+        val error = targets(k) - ao(k)
+        outputDeltas(k) = dtanh(ao(k)) * error
+      }
+
+      val hiddenDeltas = hiddenids.map { _ => 0.0 } ++: mutable.ListBuffer.empty[Double]
+      for (j <- 0 until hiddenids.size) {
+        val error = (0 until urlids.size).foldLeft(0.0) { (err, k) =>
+          err + outputDeltas(k) * wo(j)(k)
+        }
+        hiddenDeltas(j) = dtanh(ah(j)) * error
+      }
+
+      for (j <- 0 until hiddenids.size; k <- 0 until urlids.size) {
+        val change = outputDeltas(k) * ah(j)
+        wo(j)(k) += n * change
+      }
+
+      for (i <- 0 until wordids.size; j <- 0 until hiddenids.size) {
+        val change = hiddenDeltas(j) * ai(i)
+        wi(i)(j) += n * change
+      }
+    }
+
+    /**
+     * @param wordids
+     * @param urlids
+     * @param selectedUrl
+     */
+    def trainQuery(wordids: (Int, Int), urlids: List[Int], selectedUrl: List[Int]): Unit = {
+      generateHiddenNode(wordids, urlids)
+      setupNetwork(List(wordids._1, wordids._2), urlids)
+      feedForward()
+      val targets = urlids.map { _ => 0.0 } ++: mutable.ListBuffer.empty[Double]
+      selectedUrl.foreach { selectedUrlId =>
+        targets(urlids.indexOf(selectedUrlId)) = 1.0
+      }
+      backPropagate(targets.toList)
+      updateDatabase()
+    }
+
+    /**
+     *
+     */
+    def updateDatabase(): Unit = {
+      for (i <- 0 until wordids.size; j <- 0 until hiddenids.size) {
+        setStrength(wordids(i), hiddenids(j), 0, wi(i)(j))
+      }
+      for (j <- 0 until hiddenids.size; k <- 0 until urlids.size) {
+        setStrength(hiddenids(j), urlids(k), 1, wo(j)(k))
+      }
+    }
   }
 
 }
