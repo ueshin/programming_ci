@@ -39,7 +39,6 @@ object Optimization {
   val flights = using(Source.fromFile("src/test/resources/schedule.txt")) { src =>
     val LineRegex = """([A-Z]{3}),([A-Z]{3}),(\d{1,2}:\d{2}),(\d{1,2}:\d{2}),(\d+)""".r
     src.getLines.foldLeft(Map.empty[(String, String), List[(String, String, Int)]]) { (map, line) =>
-      println(line)
       val LineRegex(origin, dest, depart, arrive, price) = line
       map + ((origin, dest) -> (map.getOrElse((origin, dest), List.empty[(String, String, Int)]) :+ (depart, arrive, price.toInt)))
     }
@@ -53,6 +52,26 @@ object Optimization {
   def getMinutes(t: String) = {
     t match {
       case MinutesRegexp(h, m) => h.toInt * 60 + m.toInt
+    }
+  }
+
+  /*
+   * 5.2 解の表現
+   */
+  /**
+   * @param r
+   */
+  def printSchedule(r: List[Int]): Unit = {
+    assert(r.size == people.size * 2)
+
+    for (i <- 0 until r.size / 2) {
+      val (name, origin) = people(i)
+      val out = flights(origin, destination)(r(2 * i))
+      val ret = flights(destination, origin)(r(2 * i + 1))
+      println("%10s%10s %5s-%5s $%3s %5s-%5s $%3s".format(
+        name, origin,
+        out._1, out._2, out._3,
+        ret._1, ret._2, ret._3))
     }
   }
 }
