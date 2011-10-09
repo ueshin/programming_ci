@@ -64,4 +64,33 @@ object Dorm {
     }
     loop(0, dorms.flatMap(d => List(d, d)))
   }
+
+  /*
+   * 5.9.2 コスト関数
+   */
+  /**
+   * @param vec
+   * @return
+   */
+  def dormCost(vec: List[Int]) = {
+    @tailrec
+    def loop(i: Int, slot: List[Dorm], cost: Double): Double = {
+      if (i < vec.size) {
+        val x = vec(i)
+        val dorm = slot(x)
+        val pref = prefs(i)._2
+        loop(i + 1, slot.take(x) ::: slot.takeRight(slot.size - x - 1),
+          if (dorm == pref._1) {
+            cost
+          } else if (dorm == pref._2) {
+            cost + 1
+          } else {
+            cost + 3
+          })
+      } else {
+        cost
+      }
+    }
+    loop(0, dorms.flatMap(d => List(d, d)), 0)
+  }
 }
