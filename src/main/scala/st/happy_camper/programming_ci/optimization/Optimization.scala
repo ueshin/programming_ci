@@ -17,6 +17,8 @@ package st.happy_camper.programming_ci
 package optimization
 
 import scala.io.Source
+import scala.math.max
+import scala.math.min
 
 /**
  * @author ueshin
@@ -73,5 +75,37 @@ object Optimization {
         out._1, out._2, out._3,
         ret._1, ret._2, ret._3))
     }
+  }
+
+  /*
+   * 5.3 コスト関数
+   */
+  /**
+   * @param
+   * @return
+   */
+  def scheduleCost(sol: List[Int]): Double = {
+    assert(sol.size == people.size * 2)
+
+    val (totalPrice, latestArrival, earliestDep) = (0 until sol.size / 2).foldLeft(0, 0, 24 * 60) {
+      case ((totalPrice, latestArrival, earliestDep), d) =>
+        val origin = people(d)._2
+        val outbound = flights(origin, destination)(sol(2 * d))
+        val returnf = flights(destination, origin)(sol(2 * d + 1))
+
+        (totalPrice + outbound._3 + returnf._3,
+          max(latestArrival, getMinutes(outbound._2)),
+          min(earliestDep, getMinutes(returnf._1)))
+    }
+
+    val totalWait = (0 until sol.size / 2).foldLeft(0) { (totalWait, d) =>
+      val origin = people(d)._2
+      val outbound = flights(origin, destination)(sol(2 * d))
+      val returnf = flights(destination, origin)(sol(2 * d + 1))
+
+      totalWait + (latestArrival - getMinutes(outbound._2)) + (getMinutes(returnf._1) - earliestDep)
+    }
+
+    totalPrice + totalWait + (if (latestArrival < earliestDep) 50 else 0)
   }
 }
