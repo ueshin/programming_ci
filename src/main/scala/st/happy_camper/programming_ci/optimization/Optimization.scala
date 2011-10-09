@@ -216,4 +216,58 @@ object Optimization {
     }
     loop(domain.map { d => Random.nextInt(d._2 - d._1 + 1) + d._1 }, t)
   }
+
+  /*
+   * 5.7 遺伝アルゴリズム
+   */
+  /**
+   * @param domain
+   * @param costf
+   * @param popSize
+   * @param step
+   * @param mutProb
+   * @param elite
+   * @param maxIter
+   * @return
+   */
+  def geneticOptimize(domain: List[(Int, Int)], costf: List[Int] => Double, popSize: Int = 50, step: Int = 1, mutProb: Double = 0.2, elite: Double = 0.2, maxIter: Int = 100) = {
+    val topelite = (elite * popSize).toInt
+
+    @tailrec
+    def mutate(vec: List[Int]): List[Int] = {
+      val i = Random.nextInt(domain.size)
+      if (Random.nextDouble() < 0.5 && vec(i) > domain(i)._1) {
+        vec.take(i) ::: (vec(i) - step) :: vec.takeRight(domain.size - i - 1)
+      } else if (vec(i) < domain(i)._2) {
+        vec.take(i) ::: (vec(i) + step) :: vec.takeRight(domain.size - i - 1)
+      } else {
+        mutate(vec)
+      }
+    }
+
+    def crossover(r1: List[Int], r2: List[Int]) = {
+      val i = Random.nextInt(domain.size)
+      r1.take(i) ::: r2.takeRight(domain.size - i)
+    }
+
+    @tailrec
+    def loop(pop: List[List[Int]], itr: Int): (Double, Option[List[Int]]) = {
+      val ranked = pop.map { p => (costf(p), p) }.sortBy(_._1)
+      if (itr > 0) {
+        val elite = ranked.take(topelite).map(_._2)
+        val nextGen = (topelite until popSize).map { i =>
+          if (Random.nextDouble() < mutProb) {
+            mutate(elite(Random.nextInt(topelite)))
+          } else {
+            crossover(elite(Random.nextInt(topelite)), elite(Random.nextInt(topelite)))
+          }
+        }.toList
+        loop(elite ::: nextGen, itr - 1)
+      } else {
+        (ranked(0)._1, Option(ranked(0)._2))
+      }
+    }
+
+    loop((0 until popSize).map(p => domain.map { d => Random.nextInt(d._2 - d._1 + 1) + d._1 }).toList, maxIter)
+  }
 }
