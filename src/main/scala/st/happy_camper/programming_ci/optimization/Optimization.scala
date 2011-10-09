@@ -16,6 +16,7 @@
 package st.happy_camper.programming_ci
 package optimization
 
+import scala.annotation.tailrec
 import scala.io.Source
 import scala.math.max
 import scala.math.min
@@ -129,5 +130,42 @@ object Optimization {
           (best, bestr)
         }
     }
+  }
+
+  /*
+   * 5.5 ヒルクライム
+   */
+  /**
+   * @param domain
+   * @param costf
+   * @return
+   */
+  def hillclimb(domain: List[(Int, Int)], costf: List[Int] => Double) = {
+    @tailrec
+    def loop(sol: List[Int]): (Double, Option[List[Int]]) = {
+      val neighbors = (0 until sol.size).flatMap { j =>
+        List(if (sol(j) > domain(j)._1) { sol.take(j) ::: (sol(j) - 1) :: sol.takeRight(sol.size - j - 1) } else Nil,
+          if (sol(j) < domain(j)._2) { sol.take(j) ::: (sol(j) + 1) :: sol.takeRight(sol.size - j - 1) } else Nil)
+      }.toList
+
+      val current = costf(sol)
+      val (best, bestr) = neighbors.foldLeft(current, sol) {
+        case ((best, bestr), Nil) => (best, bestr)
+        case ((best, bestr), n) =>
+          val cost = costf(n)
+          if (cost < best) {
+            (cost, n)
+          } else {
+            (best, bestr)
+          }
+      }
+
+      if (best == current) {
+        (best, Option(bestr))
+      } else {
+        loop(bestr)
+      }
+    }
+    loop(domain.map { d => Random.nextInt(d._2 - d._1 + 1) + d._1 })
   }
 }
