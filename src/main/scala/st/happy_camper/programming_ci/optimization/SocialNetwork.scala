@@ -15,6 +15,17 @@
  */
 package st.happy_camper.programming_ci.optimization
 
+import java.awt.geom.Line2D
+import java.awt.geom.Rectangle2D
+import java.awt.image.BufferedImage
+import java.awt.Color
+import java.io.File
+
+import scala.math.pow
+import scala.math.sqrt
+
+import javax.imageio.ImageIO
+
 /**
  * @author ueshin
  */
@@ -65,7 +76,7 @@ object SocialNetwork {
       people(i) -> (vec(2 * i), vec(2 * i + 1))
     }.toMap
 
-    (for (i <- 0 until links.size; j <- i + 1 until links.size) yield {
+    val total = (for (i <- 0 until links.size; j <- i + 1 until links.size) yield {
       val ((x1, y1), (x2, y2)) = (loc(links(i)._1), loc(links(i)._2))
       val ((x3, y3), (x4, y4)) = (loc(links(j)._1), loc(links(j)._2))
 
@@ -78,5 +89,44 @@ object SocialNetwork {
         if (ua > 0 && ua < 1 && ub > 0 && ub < 1) 1 else 0
       }
     }).sum
+
+    total + (for (i <- 0 until people.size; j <- i + 1 until people.size) yield {
+      val ((x1, y1), (x2, y2)) = (loc(people(i)), loc(people(j)))
+      val dist = sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2))
+      if (dist < 50) { 1 - dist / 50 } else 0
+    }).sum
+  }
+
+  /*
+   * 5.10.3 ネットワークの描画
+   */
+  /**
+   * @param sol
+   */
+  def drawNetwork(sol: List[Int], jpeg: String): Unit = {
+    val pos = (0 until people.size).map { i =>
+      people(i) -> (sol(2 * i), sol(2 * i + 1))
+    }.toMap
+
+    val im = new BufferedImage(400, 400, BufferedImage.TYPE_INT_RGB)
+    val g = im.createGraphics()
+    g.setColor(Color.WHITE)
+    g.fill(new Rectangle2D.Double(0, 0, 400, 400))
+
+    g.setColor(Color.RED)
+    links.foreach {
+      case (a, b) =>
+        g.draw(new Line2D.Double(pos(a)._1, pos(a)._2, pos(b)._1, pos(b)._2))
+    }
+
+    g.setColor(Color.BLACK)
+    pos.foreach {
+      case (p, (x, y)) =>
+        g.drawString(p.name, x, y)
+    }
+
+    g.drawImage(im, null, 0, 0)
+
+    ImageIO.write(im, "jpeg", new File(jpeg))
   }
 }
