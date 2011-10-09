@@ -20,6 +20,8 @@ import scala.annotation.tailrec
 import scala.io.Source
 import scala.math.max
 import scala.math.min
+import scala.math.abs
+import scala.math.exp
 import scala.util.Random
 
 /**
@@ -167,5 +169,51 @@ object Optimization {
       }
     }
     loop(domain.map { d => Random.nextInt(d._2 - d._1 + 1) + d._1 })
+  }
+
+  /*
+   * 5.6 模擬アニーリング
+   */
+  /**
+   * @param domain
+   * @param costf
+   * @param t
+   * @param cool
+   * @param step
+   * @return
+   */
+  def annealingOptimize(domain: List[(Int, Int)], costf: List[Int] => Double, t: Double = 10000.0, cool: Double = 0.95, step: Int = 1) = {
+    @tailrec
+    def loop(vec: List[Int], t: Double): (Double, Option[List[Int]]) = {
+      if (t > 0.1) {
+        val idx = Random.nextInt(domain.size)
+        val dir = Random.nextInt(2 * step + 1) - step
+        val vecb = vec.zipWithIndex.map {
+          case (v, i) =>
+            if (i == idx) {
+              if (v + dir < domain(i)._1) {
+                domain(i)._1
+              } else if (v + dir > domain(i)._2) {
+                domain(i)._2
+              } else {
+                v + dir
+              }
+            } else {
+              v
+            }
+        }
+        val ea = costf(vec)
+        val eb = costf(vecb)
+        val p = exp(-abs(eb - ea) / t)
+        if (eb < ea || Random.nextDouble() < p) {
+          loop(vecb, t * cool)
+        } else {
+          loop(vec, t * cool)
+        }
+      } else {
+        (costf(vec), Option(vec))
+      }
+    }
+    loop(domain.map { d => Random.nextInt(d._2 - d._1 + 1) + d._1 }, t)
   }
 }
