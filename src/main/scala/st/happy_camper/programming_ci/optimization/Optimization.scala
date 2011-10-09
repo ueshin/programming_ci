@@ -19,6 +19,7 @@ package optimization
 import scala.io.Source
 import scala.math.max
 import scala.math.min
+import scala.util.Random
 
 /**
  * @author ueshin
@@ -107,5 +108,26 @@ object Optimization {
     }
 
     totalPrice + totalWait + (if (latestArrival < earliestDep) 50 else 0)
+  }
+
+  /*
+   * 5.4 ランダムサーチ(無作為探索)
+   */
+  /**
+   * @param domain
+   * @param costf
+   * @return
+   */
+  def randomOptimize(domain: List[(Int, Int)], costf: List[Int] => Double) = {
+    (1 to 1000).foldLeft(Double.MaxValue, Option.empty[List[Int]]) {
+      case ((best, bestr), i) =>
+        val r = domain.map { d => Random.nextInt(d._2 - d._1 + 1) + d._1 }
+        val cost = costf(r)
+        if (cost < best) {
+          (cost, Option(r))
+        } else {
+          (best, bestr)
+        }
+    }
   }
 }
