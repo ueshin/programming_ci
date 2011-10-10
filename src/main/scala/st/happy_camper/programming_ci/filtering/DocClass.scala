@@ -17,6 +17,9 @@ package st.happy_camper.programming_ci
 package filtering
 
 import scala.collection.mutable
+import scala.math.exp
+import scala.math.log
+import scala.math.min
 
 /**
  * @author ueshin
@@ -223,6 +226,39 @@ object DocClass {
       } else {
         clf / categories.map { c => fprob(f, c) }.sum
       }
+    }
+
+    /*
+     * 6.6.2 確率を統合する
+     */
+    /**
+     * @param item
+     * @param cat
+     * @return
+     */
+    def fisherProb(item: String, cat: String) = {
+      val features = getFeatures(item)
+      val p = features.foldLeft(1.0) { (p, f) =>
+        p * weightedProb(f, cat, cprob)
+      }
+      val fscore = -2 * log(p)
+      invchi2(fscore, 2 * features.size)
+    }
+
+    /**
+     * @param chi
+     * @param df
+     * @return
+     */
+    def invchi2(chi: Double, df: Double) = {
+      val m = chi / 2.0
+      var term = exp(-m)
+      var sum = term
+      (1 until (df / 2).toInt).foreach { i =>
+        term *= m / i
+        sum += term
+      }
+      min(sum, 1.0)
     }
   }
 }
