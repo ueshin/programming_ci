@@ -146,4 +146,22 @@ object DocClass {
     cl.train("make quick money at the online casino", "bad")
     cl.train("the quick brown fox jumps", "good")
   }
+
+  /*
+   * 6.5.1 ドキュメント全体の確率
+   */
+  /**
+   * @author ueshin
+   */
+  class NaiveBayes(getFeatures: String => Set[String]) extends Classifier(getFeatures) {
+
+    /**
+     * @param item
+     * @param cat
+     * @return
+     */
+    def docprob(item: String, cat: String) = {
+      getFeatures(item).map { f => weightedProb(f, cat, fprob) }.product
+    }
+  }
 }
