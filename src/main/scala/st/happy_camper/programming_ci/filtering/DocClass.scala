@@ -16,6 +16,8 @@
 package st.happy_camper.programming_ci
 package filtering
 
+import scala.collection.mutable
+
 /**
  * @author ueshin
  */
@@ -30,5 +32,85 @@ object DocClass {
    */
   def getWords(doc: String) = {
     doc.split("""\W+""").filter(w => w.size > 2 && w.size < 20).map(_.toLowerCase).toSet
+  }
+
+  /*
+   * 6.3 分類器のトレーニング
+   */
+  /**
+   * @author ueshin
+   */
+  class Classifier(getFeatures: String => Set[String]) {
+    val fc = mutable.Map.empty[String, mutable.Map[String, Int]]
+    val cc = mutable.Map.empty[String, Int]
+
+    /**
+     * @param f
+     * @param cat
+     */
+    def incf(f: String, cat: String): Unit = {
+      fc += (f -> fc.getOrElse(f, mutable.Map.empty[String, Int]))
+      fc(f) += (cat -> (fc(f).getOrElse(cat, 0) + 1))
+    }
+
+    /**
+     * @param cat
+     */
+    def incc(cat: String): Unit = {
+      cc += (cat -> (cc.getOrElse(cat, 0) + 1))
+    }
+
+    /**
+     * @param f
+     * @param cat
+     * @return
+     */
+    def fcount(f: String, cat: String) = {
+      if (fc.contains(f) && fc(f).contains(cat)) fc(f)(cat) else 0.0
+    }
+
+    /**
+     * @param cat
+     * @return
+     */
+    def catcount(cat: String) = {
+      if (cc.contains(cat)) cc(cat) else 0.0
+    }
+
+    /**
+     * @return
+     */
+    def totalcount() = {
+      cc.values.sum
+    }
+
+    /**
+     * @return
+     */
+    def categories = {
+      cc.keySet
+    }
+
+    /**
+     * @param item
+     * @param cat
+     */
+    def train(item: String, cat: String): Unit = {
+      getFeatures(item).foreach { f =>
+        incf(f, cat)
+      }
+      incc(cat)
+    }
+  }
+
+  /**
+   * @param cl
+   */
+  def sampleTrain(cl: Classifier): Unit = {
+    cl.train("Nobody owns the water.", "good")
+    cl.train("the quick rabbit jumps fences", "good")
+    cl.train("buy pharmaceuticals now", "bad")
+    cl.train("make quick money at the online casino", "bad")
+    cl.train("the quick brown fox jumps", "good")
   }
 }
