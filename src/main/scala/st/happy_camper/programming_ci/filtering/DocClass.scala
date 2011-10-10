@@ -202,4 +202,27 @@ object DocClass {
       if (probs.filterKeys(_ != best).forall(_._2 * thresholds.getOrElse(best, 1.0) < max)) best else default
     }
   }
+
+  /*
+   * 6.6.1 特徴たちのカテゴリの確率
+   */
+  /**
+   * @author ueshin
+   */
+  class FisherClassifier(getFeatures: String => Set[String]) extends Classifier(getFeatures) {
+
+    /**
+     * @param f
+     * @param cat
+     * @return
+     */
+    def cprob(f: String, cat: String) = {
+      val clf = fprob(f, cat)
+      if (clf == 0.0) {
+        0.0
+      } else {
+        clf / categories.map { c => fprob(f, c) }.sum
+      }
+    }
+  }
 }
