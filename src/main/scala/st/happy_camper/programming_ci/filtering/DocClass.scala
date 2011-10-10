@@ -163,5 +163,17 @@ object DocClass {
     def docprob(item: String, cat: String) = {
       getFeatures(item).map { f => weightedProb(f, cat, fprob) }.product
     }
+
+    /*
+     * 6.5.2 ベイズの定理の簡単な紹介
+     */
+    /**
+     * @param item
+     * @param cat
+     * @return
+     */
+    def prob(item: String, cat: String) = {
+      docprob(item, cat) * catcount(cat) / totalcount()
+    }
   }
 }
