@@ -260,5 +260,27 @@ object DocClass {
       }
       min(sum, 1.0)
     }
+
+    /*
+     * 6.6.3 アイテムを分類する
+     */
+    val minimums = mutable.Map.empty[String, Double]
+
+    /**
+     * @param item
+     * @param default
+     * @return
+     */
+    def classify(item: String, default: String = "unknown") = {
+      categories.foldLeft(default, 0.0) {
+        case ((best, max), c) =>
+          val p = fisherProb(item, c)
+          if (p > minimums.getOrElse(c, 0.0) && p > max) {
+            (c, p)
+          } else {
+            (best, max)
+          }
+      }._1
+    }
   }
 }
