@@ -117,6 +117,23 @@ object DocClass {
         fcount(f, cat) / catcount(cat)
       }
     }
+
+    /*
+     * 6.4.1 推測を始める
+     */
+    /**
+     * @param f
+     * @param cat
+     * @param prf
+     * @param weight
+     * @param ap
+     * @return
+     */
+    def weightedProb(f: String, cat: String, prf: (String, String) => Double, weight: Double = 1.0, ap: Double = 0.5) = {
+      val basicProb = prf(f, cat)
+      val totals = categories.map { c => fcount(f, c) }.sum
+      ((weight * ap) + (totals * basicProb)) / (weight + totals)
+    }
   }
 
   /**
