@@ -101,6 +101,22 @@ object DocClass {
       }
       incc(cat)
     }
+
+    /*
+     * 6.4 確率を計算する
+     */
+    /**
+     * @param f
+     * @param cat
+     * @return
+     */
+    def fprob(f: String, cat: String) = {
+      if (catcount(cat) == 0) {
+        0
+      } else {
+        fcount(f, cat) / catcount(cat)
+      }
+    }
   }
 
   /**
