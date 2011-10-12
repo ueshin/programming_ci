@@ -16,6 +16,8 @@
 package st.happy_camper.programming_ci
 package filtering
 
+import java.sql.DriverManager
+
 import scala.collection.mutable
 import scala.math.exp
 import scala.math.log
@@ -43,56 +45,7 @@ object DocClass {
   /**
    * @author ueshin
    */
-  abstract class Classifier(getFeatures: String => Set[String]) {
-    val fc = mutable.Map.empty[String, mutable.Map[String, Int]]
-    val cc = mutable.Map.empty[String, Int]
-
-    /**
-     * @param f
-     * @param cat
-     */
-    def incf(f: String, cat: String): Unit = {
-      fc += (f -> fc.getOrElse(f, mutable.Map.empty[String, Int]))
-      fc(f) += (cat -> (fc(f).getOrElse(cat, 0) + 1))
-    }
-
-    /**
-     * @param cat
-     */
-    def incc(cat: String): Unit = {
-      cc += (cat -> (cc.getOrElse(cat, 0) + 1))
-    }
-
-    /**
-     * @param f
-     * @param cat
-     * @return
-     */
-    def fcount(f: String, cat: String) = {
-      if (fc.contains(f) && fc(f).contains(cat)) fc(f)(cat) else 0.0
-    }
-
-    /**
-     * @param cat
-     * @return
-     */
-    def catcount(cat: String) = {
-      if (cc.contains(cat)) cc(cat) else 0.0
-    }
-
-    /**
-     * @return
-     */
-    def totalcount() = {
-      cc.values.sum
-    }
-
-    /**
-     * @return
-     */
-    def categories = {
-      cc.keySet
-    }
+  abstract class Classifier(getFeatures: String => Set[String], dbfile: String) {
 
     /**
      * @param item
@@ -138,6 +91,114 @@ object DocClass {
       ((weight * ap) + (totals * basicProb)) / (weight + totals)
     }
 
+    /*
+     * 6.7.1 SQLiteを利用する
+     */
+    Class.forName("org.sqlite.JDBC")
+
+    val conn = DriverManager.getConnection("jdbc:sqlite:" + dbfile)
+    using(conn.createStatement()) { stmt =>
+      stmt.executeUpdate("create table if not exists fc(feature, category, count)")
+      stmt.executeUpdate("create table if not exists cc(category, count)")
+    }
+
+    def close() = conn.close()
+
+    /**
+     * @param f
+     * @param cat
+     */
+    def incf(f: String, cat: String): Unit = {
+      val count = fcount(f, cat)
+      if (count == 0) {
+        using(conn.prepareStatement("insert into fc values (?, ?, 1)")) { ps =>
+          ps.setString(1, f)
+          ps.setString(2, cat)
+          ps.executeUpdate()
+        }
+      } else {
+        using(conn.prepareStatement("update fc set count = ? where feature = ? and category = ?")) { ps =>
+          ps.setInt(1, count)
+          ps.setString(2, f)
+          ps.setString(3, cat)
+          ps.executeUpdate()
+        }
+      }
+    }
+
+    /**
+     * @param f
+     * @param cat
+     * @return
+     */
+    def fcount(f: String, cat: String) = {
+      using(conn.prepareStatement("select count from fc where feature = ? and category = ?")) { ps =>
+        ps.setString(1, f)
+        ps.setString(2, cat)
+        using(ps.executeQuery()) { rs =>
+          if (rs.next) rs.getInt(1) else 0
+        }
+      }
+    }
+
+    /**
+     * @param cat
+     */
+    def incc(cat: String): Unit = {
+      val count = catcount(cat)
+      if (count == 0) {
+        using(conn.prepareStatement("insert into cc values (?, 1)")) { ps =>
+          ps.setString(1, cat)
+          ps.executeUpdate()
+        }
+      } else {
+        using(conn.prepareStatement("update cc set count = ? where category = ?")) { ps =>
+          ps.setInt(1, count)
+          ps.setString(2, cat)
+          ps.executeUpdate()
+        }
+      }
+    }
+
+    /**
+     * @param cat
+     * @return
+     */
+    def catcount(cat: String) = {
+      using(conn.prepareStatement("select count from cc where category = ?")) { ps =>
+        ps.setString(1, cat)
+        using(ps.executeQuery()) { rs =>
+          if (rs.next) rs.getInt(1) else 0
+        }
+      }
+    }
+
+    /**
+     * @return
+     */
+    def categories = {
+      using(conn.prepareStatement("select category from cc")) { ps =>
+        using(ps.executeQuery()) { rs =>
+          val cs = mutable.Set.empty[String]
+          while (rs.next) {
+            cs += rs.getString(1)
+          }
+          cs
+        }
+      }
+    }
+
+    /**
+     * @return
+     */
+    def totalcount() = {
+      using(conn.prepareStatement("select sum(count) from cc")) { ps =>
+        using(ps.executeQuery()) { rs =>
+          if (rs.next) rs.getInt(1) else 0
+        }
+      }
+    }
+
     /**
      * @param item
      * @param default
@@ -163,7 +224,7 @@ object DocClass {
   /**
    * @author ueshin
    */
-  class NaiveBayes(getFeatures: String => Set[String]) extends Classifier(getFeatures) {
+  class NaiveBayes(getFeatures: String => Set[String], dbfile: String) extends Classifier(getFeatures, dbfile) {
 
     /**
      * @param item
@@ -212,7 +273,7 @@ object DocClass {
   /**
    * @author ueshin
    */
-  class FisherClassifier(getFeatures: String => Set[String]) extends Classifier(getFeatures) {
+  class FisherClassifier(getFeatures: String => Set[String], dbfile: String) extends Classifier(getFeatures, dbfile) {
 
     /**
      * @param f
