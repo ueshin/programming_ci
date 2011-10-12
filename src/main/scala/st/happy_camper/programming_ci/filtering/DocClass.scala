@@ -40,7 +40,7 @@ object DocClass {
   /**
    * @author ueshin
    */
-  class Classifier(getFeatures: String => Set[String]) {
+  abstract class Classifier(getFeatures: String => Set[String]) {
     val fc = mutable.Map.empty[String, mutable.Map[String, Int]]
     val cc = mutable.Map.empty[String, Int]
 
@@ -134,6 +134,13 @@ object DocClass {
       val totals = categories.map { c => fcount(f, c) }.sum
       ((weight * ap) + (totals * basicProb)) / (weight + totals)
     }
+
+    /**
+     * @param item
+     * @param default
+     * @return
+     */
+    def classify(item: String, default: String = "unknown"): String
   }
 
   /**
@@ -174,6 +181,25 @@ object DocClass {
      */
     def prob(item: String, cat: String) = {
       docprob(item, cat) * catcount(cat) / totalcount()
+    }
+
+    /*
+     * 6.5.3 カテゴリの選択
+     */
+    val thresholds = mutable.Map.empty[String, Double]
+
+    /**
+     * @param item
+     * @param default
+     * @return
+     */
+    def classify(item: String, default: String = "unknown") = {
+      val (probs, max, best) = categories.foldLeft(Map.empty[String, Double], 0.0, null.asInstanceOf[String]) {
+        case ((probs, max, best), cat) =>
+          val p = prob(item, cat)
+          (probs + (cat -> p), if (p > max) p else max, if (p > max) cat else best)
+      }
+      if (probs.filterKeys(_ != best).forall(_._2 * thresholds.getOrElse(best, 1.0) < max)) best else default
     }
   }
 }
